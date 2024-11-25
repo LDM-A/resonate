@@ -19,9 +19,10 @@ import (
 )
 
 type DST struct {
-	config    *Config
-	generator *Generator
-	validator *Validator
+	config      *Config
+	generator   *Generator
+	validator   *Validator
+	bcValidator *BcValidator
 }
 
 type Config struct {
@@ -68,9 +69,10 @@ type Backchannel struct {
 
 func New(r *rand.Rand, config *Config) *DST {
 	return &DST{
-		config:    config,
-		generator: NewGenerator(r, config),
-		validator: NewValidator(r, config),
+		config:      config,
+		generator:   NewGenerator(r, config),
+		validator:   NewValidator(r, config),
+		bcValidator: NewBcValidator(r, config),
 	}
 }
 
@@ -108,6 +110,9 @@ func (d *DST) Run(r *rand.Rand, api api.API, aio aio.AIO, system *system.System)
 	d.Add(t_api.ClaimTask, d.generator.GenerateClaimTask, d.validator.ValidateClaimTask)
 	d.Add(t_api.CompleteTask, d.generator.GenerateCompleteTask, d.validator.ValidateCompleteTask)
 	d.Add(t_api.HeartbeatTasks, d.generator.GenerateHeartbeatTasks, d.validator.ValidateHeartbeatTasks)
+
+	// backchannel validators
+	d.bcValidator.AddBcValidator(ValidateTasksWithSameRootPromiseId)
 
 	// porcupine ops
 	var ops []porcupine.Operation
@@ -352,9 +357,10 @@ func (d *DST) Model() porcupine.Model {
 				}
 				return true, updatedModel
 			case Bc:
-				updatedModel := model.Copy()
-				if req.bc.Task != nil {
-					updatedModel.tasks.set(req.bc.Task.Id, req.bc.Task)
+				updatedModel, err := d.BcStep(model, req)
+				if err != nil {
+					fmt.Println(err.Error())
+					return false, model
 				}
 				return true, updatedModel
 			default:
@@ -615,6 +621,15 @@ func (d *DST) Step(model *Model, reqTime int64, resTime int64, req *t_api.Reques
 	}
 
 	return d.validator.Validate(model, reqTime, resTime, req, res)
+}
+
+func (d *DST) BcStep(model *Model, req *Req) (*Model, error) {
+	util.Assert(req.kind == Bc, "Backchannel step can only be taken if req is of kind Bc")
+	if req.bc.Task == nil {
+		return model, nil
+	}
+
+	return d.bcValidator.Validate(model, req)
 }
 
 func (d *DST) Time(t int64) int64 {
