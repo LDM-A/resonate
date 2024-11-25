@@ -268,6 +268,13 @@ func schemeToRecv(v string) (*receiver.Recv, bool) {
 	}
 
 	switch u.Scheme {
+	case "nats":
+		data, err := json.Marshal(map[string]string{"url": u.String()})
+		if err != nil {
+			return nil, false
+		}
+
+		return &receiver.Recv{Type: "nats", Data: data}, true
 	case "http", "https":
 		data, err := json.Marshal(map[string]string{"url": u.String()})
 		if err != nil {

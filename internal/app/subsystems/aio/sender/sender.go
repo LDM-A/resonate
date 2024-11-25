@@ -7,6 +7,7 @@ import (
 
 	"github.com/resonatehq/resonate/internal/aio"
 	"github.com/resonatehq/resonate/internal/app/plugins/http"
+	"github.com/resonatehq/resonate/internal/app/plugins/nats"
 	"github.com/resonatehq/resonate/internal/app/plugins/poll"
 	"github.com/resonatehq/resonate/internal/kernel/bus"
 	"github.com/resonatehq/resonate/internal/kernel/t_aio"
@@ -26,6 +27,7 @@ type Config struct {
 type PluginConfig struct {
 	Http EnabledPlugin[http.Config] `flag:"http"`
 	Poll EnabledPlugin[poll.Config] `flag:"poll"`
+	Nats EnabledPlugin[nats.Config] `flag:"nats"`
 }
 
 type EnabledPlugin[T any] struct {
